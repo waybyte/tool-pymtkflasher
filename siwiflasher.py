@@ -136,8 +136,8 @@ class progressbar:
                 self.hash = x
                 self.file.write("%s\n|%s" % (self.prefix, "#"*x))
             else:
+                self.file.write("%s" % ("#"*(x-self.hash)))
                 self.hash = x
-                self.file.write("#")
         self.file.flush()
     
     def end(self):
