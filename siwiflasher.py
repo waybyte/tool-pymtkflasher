@@ -113,22 +113,38 @@ def ASSERT(flag, message):
 
 class progressbar:
     def __init__(self, prefix="", total=100, size=50, f=sys.stdout):
+        self.reset(prefix, total, size, f)
+
+    def reset(self, prefix="", total=100, size=50, f=sys.stdout):
         self.prefix = prefix
         self.total = total
         self.count = 0
         self.size = size
         self.file = f
+        self.isatty = f.isatty()
+        self.hash = -1;
 
     def update(self, j):
         self.count += j
         x = int(self.size * self.count / self.total)
         per = int(self.count * 100 / self.total)
-        self.file.write("%s[%s%s] %i%%\r" %
-                   (self.prefix, "#"*x, "."*(self.size-x), per))
+        if self.isatty:
+            self.file.write("%s [%s%s] %i%%\r" %
+                    (self.prefix, "#"*x, "."*(self.size-x), per))
+        elif self.hash != x:
+            if self.hash == -1:
+                self.hash = x
+                self.file.write("%s\n|%s" % (self.prefix, "#"*x))
+            else:
+                self.hash = x
+                self.file.write("#")
         self.file.flush()
     
     def end(self):
-        self.file.write("\n")
+        if not self.isatty:
+            self.file.write("| 100%%\n")
+        else:
+            self.file.write("\n")
         self.file.flush()
 
 
@@ -287,7 +303,7 @@ class MT6261:
 
     def da_start(self):
         self.pb = progressbar(
-            "Download DA : ", self.DA[self.chip]["1"]["size"] + self.DA[self.chip]["2"]["size"])
+            "Download DA", self.DA[self.chip]["1"]["size"] + self.DA[self.chip]["2"]["size"])
         self.pb.update(0)
         # SEND_DA_1
         offset = self.DA[self.chip]["1"]["offset"]
@@ -402,7 +418,7 @@ class MT6261:
         app_data = self.openApplication(filename, check)
         app_size = len(app_data)
         ASSERT(app_size <= app_max_size, "Application max size")
-        self.pb.__init__("Download App: ", app_size)
+        self.pb.reset("Download App", app_size)
         self.da_mem(app_address, app_size)
         self.da_write()
         self.da_write_data(app_data)
