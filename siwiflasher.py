@@ -50,6 +50,7 @@ import time
 import os.path
 from os.path import join
 from serial import Serial
+import serial.serialutil as serialutil
 from binascii import hexlify
 import inspect
 
@@ -436,7 +437,10 @@ class MT6261:
 
 
 def upload_app(file_name, com_port, baud=460800, module="siwigsm"):
-    m = MT6261(Serial(com_port, 115200))
+    try:
+        m = MT6261(Serial(com_port, 115200))
+    except serialutil.SerialException as ex:
+        ERROR(ex)
     m.connect()
     m.da_start()
     m.da_changebaud(baud)
