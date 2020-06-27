@@ -369,6 +369,14 @@ class MT6261:
                                                   mem_block_count, address, address + size - 1, type), 1)
         ASSERT(r == ACK, "DA_MEM ACK")
         r = self.send(NONE, 7)  # <-- 015A000000005A
+        r = struct.unpack(">BBHHB", r)
+        # Format progress bar
+        self.pb.reset("Pre-Format", r[3])
+        self.pb.update(0)
+        for i in range(r[3]):
+            ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed")
+            self.pb.update(i + 1)
+        self.pb.end()
 
     def da_write(self, block=4096):
         ASSERT(self.send(DA_WRITE, 1) == ACK, "DA_WRITE ACK")
@@ -427,8 +435,8 @@ class MT6261:
         app_data = self.openApplication(filename, check)
         app_size = len(app_data)
         ASSERT(app_size <= app_max_size, "Application max size")
-        self.pb.reset("Download App", app_size)
         self.da_mem(app_address, app_size)
+        self.pb.reset("Download Firmware", app_size)
         self.da_write()
         self.da_write_data(app_data)
         self.pb.end()
