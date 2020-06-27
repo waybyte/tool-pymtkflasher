@@ -332,6 +332,9 @@ class MT6261:
         self.pb.end()
     
     def da_changebaud(self, baud=460800):
+        if baud == 115200:
+            return
+
         speed_table = {
             921600: UART_BAUD_921600,
             460800: UART_BAUD_460800,
@@ -450,7 +453,7 @@ if __name__ == '__main__':
     elif count == 4:
         filename = sys.argv[3]
         comport = sys.argv[1]
-        baudrate = sys.argv[2]
+        baudrate = int(sys.argv[2])
     else:
         print("\nMissing argument\n")
         usage()
