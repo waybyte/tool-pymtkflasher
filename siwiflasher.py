@@ -103,7 +103,7 @@ if sys.version_info >= (3, 0):
 
 
 def ERROR(message):
-    print("\n\033[31mERROR: {}\n\r".format(message))
+    print("\n\033[31mERROR: {}\n".format(message))
     exit(2)
 
 
@@ -259,7 +259,8 @@ class MT6261:
     def connect(self, timeout=15):
         self.s.timeout = 0.02
         start = time.time()
-        print("Please reset the device.\nWaiting......\n")
+        print("Please reset the device.\nWaiting......")
+        sys.stdout.flush()
         c = 0
         while True:
             c += 1
@@ -435,6 +436,24 @@ def upload_app(file_name, com_port, baud=460800, module="siwigsm"):
     m.uploadApplication(module, file_name)
     m.da_reset()
 
+def usage():
+    print("Python Flashtool for SIWIGSM")
+    print("Usage:")
+    print("  %s port [baudrate] filename" % sys.argv[0])
 
 if __name__ == '__main__':
-    upload_app(sys.argv[2], sys.argv[1])
+    count = len(sys.argv)
+    if count == 3:
+        filename = sys.argv[2]
+        comport = sys.argv[1]
+        baudrate = 460800
+    elif count == 4:
+        filename = sys.argv[3]
+        comport = sys.argv[1]
+        baudrate = sys.argv[2]
+    else:
+        print("\nMissing argument\n")
+        usage()
+        sys.exit(1)
+
+    upload_app(filename, comport, baudrate)
