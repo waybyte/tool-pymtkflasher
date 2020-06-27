@@ -396,7 +396,9 @@ class MT6261:
             #print("crc", hex(w))
             c += w
             data = data[block:]
-        r = self.send(NONE, 3)
+        for i in range(3):
+            r = self.send(NONE, 1)
+            ASSERT(r == ACK, "MEM Write Error")
         r = self.send(struct.pack(">H", c & 0xFFFF), 1)
         # <-- 14175A  is error
 
