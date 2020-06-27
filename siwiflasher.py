@@ -173,7 +173,10 @@ class MT6261:
 
     def crc_word(self, data, chs=0):
         for i in xrange(0, len(data), 1):
-            chs += data[i] & 0xFF
+            if (sys.version_info[0] < 3):
+                chs += ord(data[i]) & 0xFF
+            else:
+                chs += data[i] & 0xFF
         return chs & 0xFFFF
 
     def send(self, data, sz=0):
