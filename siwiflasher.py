@@ -349,11 +349,12 @@ class MT6261:
         ASSERT(r == ACK, "DA Change Baud CMD ACK Fail: {}".format(hexs(r)))
         self.send(ACK)
         self.s.baudrate = baud
+        time.sleep(0.2)
         for i in range(10):
             r = self.send(DA_SYNC, 1)
             if (r == DA_SYNC):
                 break
-            time.sleep(0.01)
+            time.sleep(0.02)
         ASSERT(r == DA_SYNC, "DA SPEED sync fail")
         ASSERT(self.send(ACK, 1) == ACK, "DA SPEED ACK fail")
         for i in range(256):
