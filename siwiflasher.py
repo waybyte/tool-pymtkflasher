@@ -53,6 +53,8 @@ from serial import Serial
 import serial.serialutil as serialutil
 from binascii import hexlify
 import inspect
+import argparse
+from argparse import RawTextHelpFormatter
 
 DEBUG = False
 
@@ -168,9 +170,14 @@ class MT6261:
         }
     }
 
-    def __init__(self, ser):
-        self.s = ser
+    def __init__(self):
         self.dir = os.path.dirname(os.path.realpath(__file__))
+
+    def open(self):
+        try:
+            self.s = Serial(self.port, 115200)
+        except serialutil.SerialException as ex:
+            ERROR(ex)
 
     def crc_word(self, data, chs=0):
         for i in xrange(0, len(data), 1):
@@ -415,11 +422,8 @@ class MT6261:
         r = self.send(DA_ENABLE_WATCHDOG_CMD +
                       b'\x01\x40\x00\x00\x00\x00', 1)  # <-- 5A, RESET
 
-    def openApplication(self, fname, check=True):
-        ASSERT(os.path.isfile(fname) == True, "No such APP file: " + fname)
-        self.app_name = fname
-        with open(fname, 'rb') as f:
-            app_data = f.read()
+    def openApplication(self, check=True):
+        app_data = self.firmware.read()
         app_size = len(app_data)
         if app_size < 0x40:
             ERROR("APP min size")
@@ -430,11 +434,11 @@ class MT6261:
                 ERROR("APP: FILE_INFO")
         return app_data
 
-    def uploadApplication(self, id, filename, check=True):
+    def uploadApplication(self, id, check=True):
         ASSERT(id in self.DEVICE, "Unknown module: {}".format(id))
         app_address = self.DEVICE[id]["address"]
         app_max_size = self.DEVICE[id]["max_size"]
-        app_data = self.openApplication(filename, check)
+        app_data = self.openApplication(check)
         app_size = len(app_data)
         ASSERT(app_size <= app_max_size, "Application max size")
         self.da_mem(app_address, app_size)
@@ -446,35 +450,24 @@ class MT6261:
 ######################################################################
 
 
-def upload_app(file_name, com_port, baud=460800, module="siwigsm"):
-    try:
-        m = MT6261(Serial(com_port, 115200))
-    except serialutil.SerialException as ex:
-        ERROR(ex)
-    m.connect()
-    m.da_start()
-    m.da_changebaud(baud)
-    m.uploadApplication(module, file_name)
-    m.da_reset()
-
-def usage():
-    print("Python Flashtool for SIWIGSM")
-    print("Usage:")
-    print("  %s port [baudrate] filename" % sys.argv[0])
+def upload_app(flasher, module="siwigsm"):
+    flasher.open()
+    flasher.connect()
+    flasher.da_start()
+    flasher.da_changebaud(baud)
+    flasher.uploadApplication(module)
+    flasher.da_reset()
 
 if __name__ == '__main__':
-    count = len(sys.argv)
-    if count == 3:
-        filename = sys.argv[2]
-        comport = sys.argv[1]
-        baudrate = 460800
-    elif count == 4:
-        filename = sys.argv[3]
-        comport = sys.argv[1]
-        baudrate = int(sys.argv[2])
-    else:
-        print("\nMissing argument\n")
-        usage()
-        sys.exit(1)
-
-    upload_app(filename, comport, baudrate)
+    flasher = MT6261()
+    parser = argparse.ArgumentParser(description='SiWi GSM Flash Tool', formatter_class=RawTextHelpFormatter)
+    parser.add_argument("-p", "--port", required=True, help="Serial port for flashing.")
+    parser.add_argument("-b", "--baud", type=int, default=460800, help="Serial port baudrate.")
+    parser.add_argument("-o", "--opt", type=int, default=1,
+            help="""Flash Options:
+    0: Download Firmware and Format
+    1: Download Firmware only (default)""")
+    parser.add_argument("firmware", type=argparse.FileType('rb'), help="Firmware binary file.")
+    parser.add_argument("--version", action="version", version="SiWi GSM Flash Tool v0.2.0")
+    args = parser.parse_args(namespace=flasher)
+    upload_app(flasher)
