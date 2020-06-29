@@ -106,7 +106,7 @@ if sys.version_info >= (3, 0):
 
 
 def ERROR(message):
-    print("\n\033[31mERROR: {}\n".format(message))
+    print("\nERROR: {}\n".format(message))
     exit(2)
 
 
@@ -145,7 +145,7 @@ class progressbar:
     
     def end(self):
         if not self.isatty:
-            self.file.write("| 100%%\n")
+            self.file.write("| 100%\n")
         else:
             self.file.write("\n")
         self.file.flush()
