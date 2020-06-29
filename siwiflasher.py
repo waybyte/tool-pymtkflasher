@@ -379,11 +379,12 @@ class MT6261:
         r = struct.unpack(">BBIB", r)
         ASSERT(r[0] == file_count, "File count does not match")
         # Format progress bar
-        self.pb.reset("Pre-Format", r[3])
+        self.pb.reset("Pre-Format", r[2] + 1)
         self.pb.update(0)
-        for i in range(r[3]):
+        for i in range(r[2]):
             ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed")
-            self.pb.update(i + 1)
+            self.pb.update(1)
+        self.pb.update(1)
         self.pb.end()
 
     def da_write(self, block=4096):
