@@ -423,24 +423,24 @@ class MT6261:
                       b'\x01\x40\x00\x00\x00\x00', 1)  # <-- 5A, RESET
 
     def openApplication(self, check=True):
+        flasher.firmware.seek(0x1c)
+        addr = struct.unpack("<I", flasher.firmware.read(4))[0]
+        size = struct.unpack("<I", flasher.firmware.read(4))[0]
+        self.firmware.seek(0)
         app_data = self.firmware.read()
         app_size = len(app_data)
+        ASSERT(size == app_size, "APP: Size mismatch")
         if app_size < 0x40:
-            ERROR("APP min size")
+            ERROR("APP: Invalid size.")
         if check == True:
             if app_data[:3].decode() != "MMM":
-                ERROR("APP: MMM")
+                ERROR("APP: Invalid header 'MMM' expected.")
             if app_data[8:17].decode() != "FILE_INFO":
-                ERROR("APP: FILE_INFO")
-        return app_data
+                ERROR("APP: Invalid header 'FILE_INFO' expected.")
+        return app_data, addr, size
 
-    def uploadApplication(self, id, check=True):
-        ASSERT(id in self.DEVICE, "Unknown module: {}".format(id))
-        app_address = self.DEVICE[id]["address"]
-        app_max_size = self.DEVICE[id]["max_size"]
-        app_data = self.openApplication(check)
-        app_size = len(app_data)
-        ASSERT(app_size <= app_max_size, "Application max size")
+    def uploadApplication(self, check=True):
+        app_data, app_address, app_size = self.openApplication(check)
         self.da_mem(app_address, app_size)
         self.pb.reset("Download Firmware", app_size)
         self.da_write()
@@ -450,12 +450,12 @@ class MT6261:
 ######################################################################
 
 
-def upload_app(flasher, module="siwigsm"):
+def upload_app(flasher):
     flasher.open()
     flasher.connect()
     flasher.da_start()
     flasher.da_changebaud(flasher.baud)
-    flasher.uploadApplication(module)
+    flasher.uploadApplication()
     flasher.da_reset()
 
 if __name__ == '__main__':
