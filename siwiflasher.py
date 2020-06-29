@@ -370,13 +370,14 @@ class MT6261:
             ASSERT(self.send(loop_val, 1) == loop_val, "DA SPEED Loop fail")
 
     # NACK: disable FOTA feature
-    def da_mem(self, address, size, fota=NACK, mem_block_count=1, type=0x00007000):
+    def da_mem(self, address, size, fota=NACK, file_count=1, type=0x00007000):
         address %= 0x08000000
         r = self.send(DA_MEM + fota + struct.pack(">BIII",
-                                                  mem_block_count, address, address + size - 1, type), 1)
+                                                  file_count, address, address + size - 1, type), 1)
         ASSERT(r == ACK, "DA_MEM ACK")
         r = self.send(NONE, 7)  # <-- 015A000000005A
-        r = struct.unpack(">BBHHB", r)
+        r = struct.unpack(">BBIB", r)
+        ASSERT(r[0] == file_count, "File count does not match")
         # Format progress bar
         self.pb.reset("Pre-Format", r[3])
         self.pb.update(0)
