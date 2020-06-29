@@ -454,7 +454,7 @@ def upload_app(flasher, module="siwigsm"):
     flasher.open()
     flasher.connect()
     flasher.da_start()
-    flasher.da_changebaud(baud)
+    flasher.da_changebaud(flasher.baud)
     flasher.uploadApplication(module)
     flasher.da_reset()
 
