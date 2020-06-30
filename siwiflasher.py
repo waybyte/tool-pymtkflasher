@@ -74,6 +74,7 @@ CMD_SEND_DA = b'\xD7'
 CMD_SEND_EPP = b'\xD9'
 
 DA_SYNC = b'\xC0'
+DA_FORMAT_FAT = b'\xB8'
 DA_CONFIG_EMI = b'\xD0'
 DA_POST_PROCESS = b'\xD1'
 DA_SPEED = b'\xD2'
@@ -455,6 +456,28 @@ class MT6261:
         self.da_write_data(app_data)
         self.pb.end()
 
+    def formatFAT(self):
+        self.send(DA_FORMAT_FAT + b'\x00\x01')
+        self.send(NONE, 4) # 00000000
+        fat_addr = struct.unpack(">I", self.send(NONE, 4))[0]
+        fat_len = struct.unpack(">I", self.send(NONE, 4))[0]
+        self.send(NONE, 16)
+        ASSERT(self.send(NONE, 2) == ACK + ACK, "Format FAT ack failed")
+        self.pb.reset("Format Fat [0x%08x : 0x%08x]" % (fat_addr, fat_addr + fat_len - 1))
+        self.pb.update(0)
+        start_time = time.time()
+        pre = 0
+        while (time.time() - start_time) < 20:
+            self.send(NONE, 4)
+            curr = self.send(NONE, 1)[0]
+            self.pb.update(curr - pre)
+            pre = curr
+            self.send(ACK)
+            if (curr == 100):
+                break
+        self.pb.end()
+
+
 ######################################################################
 
 
@@ -464,6 +487,8 @@ def upload_app(flasher):
     flasher.da_start()
     flasher.da_changebaud(flasher.baud)
     flasher.uploadApplication()
+    if flasher.opt == 0:
+        flasher.formatFAT()
     flasher.da_reset()
 
 if __name__ == '__main__':
