@@ -477,6 +477,10 @@ class MT6261:
                 break
         self.pb.end()
 
+    def da_finish(self):
+        self.send(DA_FINISH, 1) # ACK
+        self.send(b"\x00\x00\x00\x00", 1) # NAK
+
 
 ######################################################################
 
@@ -489,7 +493,10 @@ def upload_app(flasher):
     flasher.uploadApplication()
     if flasher.opt == 0:
         flasher.formatFAT()
-    flasher.da_reset()
+    if (flasher.no_reset):
+        flasher.da_finish()
+    else:
+        flasher.da_reset()
 
 if __name__ == '__main__':
     flasher = MT6261()
@@ -500,7 +507,8 @@ if __name__ == '__main__':
             help="""Flash Options:
     0: Download Firmware and Format
     1: Download Firmware only (default)""")
+    parser.add_argument("-n", "--no-reset", help="Do not reset after flashing", action='store_true')
     parser.add_argument("firmware", type=argparse.FileType('rb'), help="Firmware binary file.")
     parser.add_argument("--version", action="version", version="SiWi GSM Flash Tool v0.2.0")
-    args = parser.parse_args(namespace=flasher)
+    parser.parse_args(namespace=flasher)
     upload_app(flasher)
