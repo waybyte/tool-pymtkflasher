@@ -159,13 +159,6 @@ def hexs(s):
 
 
 class MT6261:
-    DEVICE = {
-        "siwigsm": {
-            "address": 0x102E0000,  # info from linker
-            "max_size": 0x40000
-        },
-    }
-
     DA = {
         "MT6261": {
             "1": {"offset": 0x00000, "size": 0x00718, "address": 0x70007000},
