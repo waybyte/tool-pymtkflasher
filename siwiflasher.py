@@ -373,18 +373,25 @@ class MT6261:
             ASSERT(self.send(loop_val, 1) == loop_val, "DA SPEED Loop fail")
 
     # NACK: disable FOTA feature
-    def da_mem(self, address, size, fota=NACK, file_count=1, type=0x00007000):
-        address %= 0x08000000
-        r = self.send(DA_MEM + fota + struct.pack(">BIII",
-                                                  file_count, address, address + size - 1, type), 1)
-        ASSERT(r == ACK, "DA_MEM ACK")
-        r = self.send(NONE, 7)  # <-- 015A000000005A
-        r = struct.unpack(">BBIB", r)
+    def da_mem(self, address, size, file_count=1, fota=NACK, type=0x00007000):
+        self.send(DA_MEM + fota + struct.pack(">B", file_count))
+
+        for i in range(file_count):
+            start_addr = address[i] & 0x07FFFFFF
+            end_addr = start_addr + size[i] - 1
+            r = self.send(struct.pack(">III", start_addr, end_addr, type), 1)
+            ASSERT(r == ACK, "DA_MEM ACK")
+
+        r = struct.unpack(">BB", self.send(NONE, 2)) #filecount + ACK
         ASSERT(r[0] == file_count, "File count does not match")
+        format_acks = 0
+        for i in range(file_count):
+            format_acks += struct.unpack(">I", self.send(NONE, 4))[0] # Format Ack Count for each file
+        self.send(NONE, 1) # ACK
         # Format progress bar
-        self.pb.reset("Pre-Format", r[2] + 1)
+        self.pb.reset("Pre-Format", format_acks + 1)
         self.pb.update(0)
-        for i in range(r[2]):
+        for i in range(format_acks):
             ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed")
             self.pb.update(1)
         self.pb.update(1)
@@ -396,18 +403,25 @@ class MT6261:
         r = self.send(struct.pack(">BI", 0, block), 2)
         ASSERT(r == ACK + ACK, "DA_WRITE OK")
 
-    def da_write_data(self, data, block=4096):
-        w = 0
-        c = 0
-        while data:
-            self.s.write(ACK)
-            self.s.write(data[:block])
-            w = self.crc_word(data[:block])
-            r = self.send(struct.pack(">H", w), 1)
-            self.pb.update(len(data[:block]))
-            #print("crc", hex(w))
-            c += w
-            data = data[block:]
+    def da_write_data(self, fw_data, block=4096):
+        count = 0
+        i = 0
+        c = []
+        for data in fw_data:
+            w = 0
+            c.append(0)
+            while data:
+                self.s.write(ACK)
+                self.s.write(data[:block])
+                w = self.crc_word(data[:block])
+                r = self.send(struct.pack(">H", w), 1)
+                self.pb.update(len(data[:block]))
+                #print("crc", hex(w))
+                c[i] += w
+                data = data[block:]
+            i += 1
+            count += 1
+
         start_time = time.time()
         ack_count = 0
         while (time.time() - start_time) < 5000:
@@ -417,7 +431,10 @@ class MT6261:
                 if ack_count == 3:
                     break
         ASSERT(ack_count == 3, "Firmware Write Error")
-        r = self.send(struct.pack(">H", c & 0xFFFF), 1)
+
+        for i in range(count):
+            r = self.send(struct.pack(">H", c[i] & 0xFFFF), 1)
+            ASSERT(r == ACK, "Firmware write ack failed")
         # <-- 14175A  is error
 
     def printVersion(self):
@@ -434,28 +451,52 @@ class MT6261:
                       b'\x01\x40\x00\x00\x00\x00', 1)  # <-- 5A, RESET
 
     def openApplication(self, check=True):
-        flasher.firmware.seek(0x1c)
-        addr = struct.unpack("<I", flasher.firmware.read(4))[0]
-        size = struct.unpack("<I", flasher.firmware.read(4))[0]
-        self.firmware.seek(0)
-        app_data = self.firmware.read()
-        app_size = len(app_data)
-        ASSERT(size == app_size, "APP: Size mismatch")
-        if app_size < 0x40:
-            ERROR("APP: Invalid size.")
-        if check == True:
-            if app_data[:3].decode() != "MMM":
-                ERROR("APP: Invalid header 'MMM' expected.")
-            if app_data[8:17].decode() != "FILE_INFO":
-                ERROR("APP: Invalid header 'FILE_INFO' expected.")
+        i = 0
+        tmp_addr = []
+        tmp_size = []
+        tmp_app_data = []
+
+        for firmware in self.firmware:
+            firmware.seek(0x1c)
+            tmp_addr.append(struct.unpack("<I", firmware.read(4))[0])
+            tmp_size.append(struct.unpack("<I", firmware.read(4))[0])
+            firmware.seek(0)
+            tmp_app_data.append(firmware.read())
+            app_size = len(tmp_app_data[i])
+            ASSERT(tmp_size[i] == app_size, "APP: Size mismatch")
+            if app_size < 0x40:
+                ERROR("APP: Invalid size.")
+            if check == True:
+                if tmp_app_data[i][:3].decode() != "MMM":
+                    ERROR("APP: Invalid header 'MMM' expected.")
+                if tmp_app_data[i][8:17].decode() != "FILE_INFO":
+                    ERROR("APP: Invalid header 'FILE_INFO' expected.")
+            i += 1
+
+        # Sort by address
+        addr = tmp_addr.copy()
+        size = []
+        app_data = []
+        addr.sort()
+        for start_addr in addr:
+            i = 0
+            for appaddr in tmp_addr:
+                if appaddr == start_addr:
+                    size.append(tmp_size[i])
+                    app_data.append(tmp_app_data[i])
+                    break
+                i += 1
+
         return app_data, addr, size
 
-    def uploadApplication(self, check=True):
-        app_data, app_address, app_size = self.openApplication(check)
-        self.da_mem(app_address, app_size)
-        self.pb.reset("Download Firmware", app_size)
+    def uploadApplication(self):
+        self.da_mem(self.app_address, self.app_size, len(self.firmware))
+        app_sz_total = 0
+        for app_sz in self.app_size:
+            app_sz_total += app_sz
+        self.pb.reset("Download Firmware", app_sz_total)
         self.da_write()
-        self.da_write_data(app_data)
+        self.da_write_data(self.app_data)
         self.pb.end()
 
     def formatFAT(self):
@@ -491,6 +532,7 @@ class ArgsFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelp
 
 
 def upload_app(flasher):
+    flasher.app_data, flasher.app_address, flasher.app_size = flasher.openApplication(True)
     flasher.open()
     flasher.connect()
     flasher.da_start()
@@ -513,7 +555,7 @@ if __name__ == '__main__':
     0: Download Firmware and Format
     1: Download Firmware only""")
     parser.add_argument("-n", "--no-reset", help="Do not reset after flashing", action='store_true')
-    parser.add_argument("firmware", type=argparse.FileType('rb'), help="Firmware binary file.")
+    parser.add_argument("firmware", nargs="+", type=argparse.FileType('rb'), help="Firmware binary file.")
     parser.add_argument("-v", "--version", action="version", version="SiWi GSM Flash Tool v" + APP_VER)
     parser.parse_args(namespace=flasher)
     upload_app(flasher)
