@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2020 SiWi Embedded Solutions
 #
-# SIWIGSM Flasher in Python v1.0.0
+# SIWIGSM Flasher in Python
 #
 # Based on MT6261 Flash Utility By Georgi Angelov
 #
@@ -55,6 +55,8 @@ from binascii import hexlify
 import inspect
 import argparse
 from argparse import RawTextHelpFormatter
+
+APP_VER="0.2.0"
 
 DEBUG = False
 
@@ -512,6 +514,6 @@ if __name__ == '__main__':
     1: Download Firmware only""")
     parser.add_argument("-n", "--no-reset", help="Do not reset after flashing", action='store_true')
     parser.add_argument("firmware", type=argparse.FileType('rb'), help="Firmware binary file.")
-    parser.add_argument("--version", action="version", version="SiWi GSM Flash Tool v0.2.0")
+    parser.add_argument("-v", "--version", action="version", version="SiWi GSM Flash Tool v" + APP_VER)
     parser.parse_args(namespace=flasher)
     upload_app(flasher)
