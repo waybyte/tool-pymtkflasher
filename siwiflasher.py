@@ -484,6 +484,9 @@ class MT6261:
 
 ######################################################################
 
+class ArgsFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelpFormatter):
+    pass
+
 
 def upload_app(flasher):
     flasher.open()
@@ -500,13 +503,13 @@ def upload_app(flasher):
 
 if __name__ == '__main__':
     flasher = MT6261()
-    parser = argparse.ArgumentParser(description='SiWi GSM Flash Tool', formatter_class=RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description='SiWi GSM Flash Tool', formatter_class=ArgsFormatter)
     parser.add_argument("-p", "--port", required=True, help="Serial port for flashing.")
     parser.add_argument("-b", "--baud", type=int, default=460800, help="Serial port baudrate.")
     parser.add_argument("-o", "--opt", type=int, default=1,
             help="""Flash Options:
     0: Download Firmware and Format
-    1: Download Firmware only (default)""")
+    1: Download Firmware only""")
     parser.add_argument("-n", "--no-reset", help="Do not reset after flashing", action='store_true')
     parser.add_argument("firmware", type=argparse.FileType('rb'), help="Firmware binary file.")
     parser.add_argument("--version", action="version", version="SiWi GSM Flash Tool v0.2.0")
