@@ -412,6 +412,15 @@ class MT6261:
                 #print("crc", hex(w))
                 c[i] += w
                 data = data[block:]
+                if r == NACK:
+                    # need to wait for ack before sending next packet
+                    start_time = time.time()
+                    while True:
+                        r = self.send(NONE, 1)
+                        if r == ACK:
+                            self.send(CONF)
+                            break
+                        ASSERT((time.time() - start_time) < 5, "Firmware Data write timeout")
             i += 1
             count += 1
 
