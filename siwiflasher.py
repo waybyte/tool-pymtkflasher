@@ -300,14 +300,11 @@ class MT6261:
         self.da_write16(0xa0710000, 0x430e)  # 11
         self.da_write16(0xa0710074, 0x0001)  # 12
         self.da_write32(0xa0510000, 0x00000002)  # ???
-        if BB_CPU_ID == 0x6260:
-            self.chip = "MT6260"
-            self.loadBootLoader("MT6260.bin")
-        elif BB_CPU_ID == 0x6261:
+        if BB_CPU_ID == 0x6261:
             self.chip = "MT6261"
             self.loadBootLoader("mt6261_da.bin")
         else:
-            ERROR("Unknown Download Agent")
+            ERROR("Flasher does not support this SoC: %04x" % BB_CPU_ID)
 
     def da_start(self):
         self.pb = progressbar(
