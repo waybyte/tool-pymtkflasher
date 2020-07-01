@@ -263,7 +263,7 @@ class MT6261:
         ASSERT(os.path.isfile(fname) == True, "Missing download agent: " + fname)
         self.fd = open(fname, "rb")
 
-    def connect(self, timeout=15):
+    def connect(self, timeout=30):
         self.s.timeout = 0.02
         start = time.time()
         print("Please reset the device.\nWaiting......")
