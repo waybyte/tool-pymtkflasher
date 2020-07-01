@@ -366,13 +366,13 @@ class MT6261:
             ASSERT(self.send(loop_val, 1) == loop_val, "DA SPEED Loop fail")
 
     # NACK: disable FOTA feature
-    def da_mem(self, address, size, file_count=1, fota=NACK, type=0x00007000):
+    def da_mem(self, address, size, ftype, file_count=1, fota=NACK):
         self.send(DA_MEM + fota + struct.pack(">B", file_count))
 
         for i in range(file_count):
             start_addr = address[i] & 0x07FFFFFF
             end_addr = start_addr + size[i] - 1
-            r = self.send(struct.pack(">III", start_addr, end_addr, type), 1)
+            r = self.send(struct.pack(">III", start_addr, end_addr, ftype[i]), 1)
             ASSERT(r == ACK, "DA_MEM ACK")
 
         r = struct.unpack(">BB", self.send(NONE, 2)) #filecount + ACK
@@ -454,11 +454,14 @@ class MT6261:
 
     def openApplication(self, check=True):
         i = 0
+        tmp_ftype = []
         tmp_addr = []
         tmp_size = []
         tmp_app_data = []
 
         for firmware in self.firmware:
+            firmware.seek(0x18)
+            tmp_ftype.append(struct.unpack("<H", firmware.read(2))[0])
             firmware.seek(0x1c)
             tmp_addr.append(struct.unpack("<I", firmware.read(4))[0])
             tmp_size.append(struct.unpack("<I", firmware.read(4))[0])
@@ -478,6 +481,7 @@ class MT6261:
         # Sort by address
         addr = tmp_addr.copy()
         size = []
+        ftype = []
         app_data = []
         addr.sort()
         for start_addr in addr:
@@ -485,14 +489,15 @@ class MT6261:
             for appaddr in tmp_addr:
                 if appaddr == start_addr:
                     size.append(tmp_size[i])
+                    ftype.append(tmp_ftype[i])
                     app_data.append(tmp_app_data[i])
                     break
                 i += 1
 
-        return app_data, addr, size
+        return app_data, addr, size, ftype
 
     def uploadApplication(self):
-        self.da_mem(self.app_address, self.app_size, len(self.firmware))
+        self.da_mem(self.app_address, self.app_size, self.app_type, len(self.firmware))
         app_sz_total = 0
         for app_sz in self.app_size:
             app_sz_total += app_sz
@@ -534,7 +539,7 @@ class ArgsFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawTextHelp
 
 
 def upload_app(flasher):
-    flasher.app_data, flasher.app_address, flasher.app_size = flasher.openApplication(True)
+    flasher.app_data, flasher.app_address, flasher.app_size, flasher.app_type = flasher.openApplication(True)
     flasher.open()
     flasher.connect()
     flasher.da_start()
