@@ -424,15 +424,15 @@ class MT6261:
             i += 1
             count += 1
 
-        start_time = time.time()
         ack_count = 0
-        while (time.time() - start_time) < 5000:
+        start_time = time.time()
+        while True:
             r = self.send(NONE, 1)
             if r == ACK:
                 ack_count += 1
                 if ack_count == 3:
                     break
-        ASSERT(ack_count == 3, "Firmware Write Error")
+            ASSERT((time.time() - start_time) < 10, "Firmware Write Error")
 
         for i in range(count):
             r = self.send(struct.pack(">H", c[i] & 0xFFFF), 1)
