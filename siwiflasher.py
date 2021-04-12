@@ -405,19 +405,22 @@ class MT6261:
                 self.s.write(data[:block])
                 w = self.crc_word(data[:block])
                 r = self.send(struct.pack(">H", w), 1)
-                self.pb.update(len(data[:block]))
-                #print("crc", hex(w))
-                c[i] += w
-                data = data[block:]
-                if r == NACK:
+                if r == CONF:
+                    self.pb.update(len(data[:block]))
+                    c[i] += w
+                    data = data[block:]
+                elif r == NACK:
                     # need to wait for ack before sending next packet
                     start_time = time.time()
                     while True:
                         r = self.send(NONE, 1)
                         if r == ACK:
-                            self.send(CONF)
+                            self.s.write(CONF)
                             break
-                        ASSERT((time.time() - start_time) < 5, "Firmware Data write timeout")
+                        ASSERT((time.time() - start_time) < 60, "Firmware Data write timeout")
+                else:
+                    ASSERT(False, "Firmware fail")
+
             i += 1
             count += 1
 
