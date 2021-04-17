@@ -373,19 +373,19 @@ class MT6261:
             ASSERT(r == ACK, "DA_MEM ACK")
 
         r = struct.unpack(">BB", self.send(NONE, 2)) #filecount + ACK
-        ASSERT(r[0] == file_count, "File count does not match")
-        format_acks = 0
+        #ASSERT(r[0] == file_count, "File count does not match")
+
         for i in range(file_count):
-            format_acks += struct.unpack(">I", self.send(NONE, 4))[0] # Format Ack Count for each file
-        self.send(NONE, 1) # ACK
-        # Format progress bar
-        self.pb.reset("Pre-Format", format_acks + 1)
-        self.pb.update(0)
-        for i in range(format_acks):
-            ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed")
+            format_acks = struct.unpack(">I", self.send(NONE, 4))[0] # Format Ack Count for each file
+            self.pb.reset("Pre-Format " + str(i), format_acks + 1) # Format progress bar
+            self.pb.update(0)
+            for i in range(format_acks):
+                ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed")
+                self.pb.update(1)
             self.pb.update(1)
-        self.pb.update(1)
-        self.pb.end()
+            self.pb.end()
+
+        ASSERT(self.send(NONE, 1) == ACK, "Firmware memory format failed 2")
 
     def da_write(self, block=4096):
         ASSERT(self.send(DA_WRITE, 1) == ACK, "DA_WRITE ACK")
@@ -405,19 +405,22 @@ class MT6261:
                 self.s.write(data[:block])
                 w = self.crc_word(data[:block])
                 r = self.send(struct.pack(">H", w), 1)
-                self.pb.update(len(data[:block]))
-                #print("crc", hex(w))
-                c[i] += w
-                data = data[block:]
-                if r == NACK:
+                if r == CONF:
+                    self.pb.update(len(data[:block]))
+                    c[i] += w
+                    data = data[block:]
+                elif r == NACK:
                     # need to wait for ack before sending next packet
                     start_time = time.time()
                     while True:
                         r = self.send(NONE, 1)
                         if r == ACK:
-                            self.send(CONF)
+                            self.s.write(CONF)
                             break
-                        ASSERT((time.time() - start_time) < 5, "Firmware Data write timeout")
+                        ASSERT((time.time() - start_time) < 60, "Firmware Data write timeout")
+                else:
+                    ASSERT(False, "Firmware fail")
+
             i += 1
             count += 1
 
