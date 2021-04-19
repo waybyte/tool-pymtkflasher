@@ -1,8 +1,8 @@
 ############################################################################
 #
-# Copyright (c) 2020 SiWi Embedded Solutions
+# Copyright (c) 2021 WAYBYTE Solutions
 #
-# SIWIGSM Flasher in Python
+# MT6261/MT2503 Flasher in Python
 #
 # Based on MT6261 Flash Utility By Georgi Angelov
 #
@@ -554,7 +554,7 @@ def upload_app(flasher):
 
 if __name__ == '__main__':
     flasher = MT6261()
-    parser = argparse.ArgumentParser(description='SiWi GSM Flash Tool', formatter_class=ArgsFormatter)
+    parser = argparse.ArgumentParser(description='MT6261/MT2503 Flash Tool', formatter_class=ArgsFormatter)
     parser.add_argument("-p", "--port", required=True, help="Serial port for flashing.")
     parser.add_argument("-b", "--baud", type=int, default=460800, help="Serial port baudrate.")
     parser.add_argument("-o", "--opt", type=int, default=1,
@@ -563,6 +563,6 @@ if __name__ == '__main__':
     1: Download Firmware only""")
     parser.add_argument("-n", "--no-reset", help="Do not reset after flashing", action='store_true')
     parser.add_argument("firmware", nargs="+", type=argparse.FileType('rb'), help="Firmware binary file.")
-    parser.add_argument("-v", "--version", action="version", version="SiWi GSM Flash Tool v" + APP_VER)
+    parser.add_argument("-v", "--version", action="version", version="MT6261/MT2503 Flash Tool v" + APP_VER)
     parser.parse_args(namespace=flasher)
     upload_app(flasher)

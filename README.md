@@ -1,4 +1,4 @@
-# SIWIGSM Flash Tool
+# MT6261/MT2503 Flash Tool
 Python based flash tool for Mediatek MT6261 and MT2503 SoC.
 
 ## Credits

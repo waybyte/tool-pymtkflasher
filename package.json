@@ -1,5 +1,5 @@
 {
 	"description": "Python Flash tool for Mediatek MT6261 and MT2503 SoC",
-	"name": "tool-pysiwiflasher",
+	"name": "tool-pymtkflasher",
 	"version": "0.2.0"
 }
