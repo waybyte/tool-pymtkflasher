@@ -1,6 +1,6 @@
 ############################################################################
 #
-# Copyright (c) 2021 WAYBYTE Solutions
+# Copyright (c) Waybyte Solutions
 #
 # MT6261/MT2503 Flasher in Python
 #
